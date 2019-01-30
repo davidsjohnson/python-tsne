@@ -4,9 +4,6 @@ import numpy as np
 import scipy.io.arff
 from sklearn import manifold
 
-from pythonosc import dispatcher
-from pythonosc import osc_server
-
 GENRES = "BLUES CLASSICAL COUNTRY DISCO HIPHOP JAZZ METAL POP REGGAE ROCK".split(" ")
 
 # Class for Writing Data to JSON for DxR
@@ -21,6 +18,17 @@ class SongData(json.JSONEncoder):
         self.y = float(y)
         self.z = float(z)
 
+class TsneParams:
+    def __init__(self, data_idx=0, n_components=3, p=30, lr=50, n_iter=1000, init="random"):
+        self.data_idx = data_idx
+        self.n_components = n_components
+        self.p = p
+        self.lr = lr
+        self.n_iter = n_iter
+        self.init = init
+
+# global for easier modification via osc
+tsne_params = TsneParams()
 
 def load_from_arff(data_name, data_path):
     # Load features extracted using Marsyas
@@ -58,8 +66,12 @@ def savez(data_name, data_path, X, Y, fs):
     np.savez(fpath, X=X, Y=Y, fs=fs)
 
 
-def run_tsne(X, n_components=3, p=30, lr=50, n_iter=500, init="random"):
-    tsne = manifold.TSNE(n_components=n_components, perplexity=p, learning_rate=lr, n_iter=n_iter, init=init)
+def run_tsne(X):
+    tsne = manifold.TSNE(n_components=tsne_params.n_components, 
+                         perplexity=tsne_params.p, 
+                         learning_rate=tsne_params.lr, 
+                         n_iter=tsne_params.n_iter, 
+                         init=tsne_params.init)
     return tsne.fit_transform(X)
 
 
@@ -75,6 +87,7 @@ def save_json(data_objs, filepath):
     with open(filepath, "w") as of:
         json.dump(data_objs, of, default=lambda x: x.__dict__, indent=4)
 
+
 def update_json_specs(specfile, x_domain, y_domain, z_domain):
     with open(specfile, 'r') as f:
         data = json.load(f)
@@ -87,16 +100,16 @@ def update_json_specs(specfile, x_domain, y_domain, z_domain):
         json.dump(data, f, indent=4)
 
 
-def process(jsonpath, specspath, data_idx=0, n_components=3, p=30, lr=50, n_iter=1000, init="random"):
+def process(jsonpath, specspath):
 
     data_names = ["genres_default", "genres_mfcc"]
     data_path = "../data"
 
-    print("Loading Data {} from ARFF File in {}...".format(data_names[data_idx], data_path))
-    X, Y, fs = load_from_arff(data_names[data_idx], data_path)
+    print("Loading Data {} from ARFF File in {}...".format(data_names[tsne_params.data_idx], data_path))
+    X, Y, fs = load_from_arff(data_names[tsne_params.data_idx], data_path)
     print("Done")
-    print("Running TSNE...")
-    Y_tsne = run_tsne(X, n_components=n_components, p=p, lr=lr, n_iter=n_iter, init=init)
+    print("Running TSNE | p: {} - lr: {} - iters: {} - init: {} - data: {}".format(tsne_params.p, tsne_params.lr, tsne_params.n_iter, tsne_params.init, data_names[tsne_params.data_idx]))
+    Y_tsne = run_tsne(X)
     x_domain = [float(Y_tsne[:,0].min()), float(Y_tsne[:,0].max())]
     y_domain = [float(Y_tsne[:,1].min()), float(Y_tsne[:,1].max())]
     z_domain = [float(Y_tsne[:,2].min()), float(Y_tsne[:,2].max())]
@@ -106,19 +119,48 @@ def process(jsonpath, specspath, data_idx=0, n_components=3, p=30, lr=50, n_iter
     update_json_specs(specspath, x_domain, y_domain, z_domain)
     print("Done")
 
+# receive data from pad pressed to trigger tnse
+def osc_process_tsne(ogaddress, files, data):
+    if (data==1):                       #currently only for touchOSC
+        process(files[0], files[1])
+
+def osc_update_param(ogaddress, param, data):
+    print("Updating Param: {} - {}".format(param[0], int(data)))
+    tsne_params.__dict__[param[0]] = int(data)  # need to change to 1 for OSC-XR since ID is always sent first
+
+def run_osc(jsonpath, specspath):
+    from pythonosc import dispatcher
+    from pythonosc import osc_server
+
+    d = dispatcher.Dispatcher()
+    d.map("/tsneprocess/pressed", osc_process_tsne, jsonpath, specspath)
+    d.map("/tsne_data/value", osc_update_param, "data_idx")
+    d.map("/tsne_p/value", osc_update_param, "p")
+    d.map("/tsne_lr/value", osc_update_param, "data_lr")
+    d.map("/tsne_niters/value", osc_update_param, "n_iter")
+
+    server = osc_server.ThreadingOSCUDPServer(("192.168.1.36", 10101), d)
+    print("Serving on {}".format(server.server_address))
+    server.serve_forever()
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-u", "--unity-tsne", default="../../unity/TSNE-3D2017")
-
+    parser.add_argument("-o", "--osc", action="store_true")
     args = parser.parse_args()
+
     unity_tsnepath = args.unity_tsne
     tsne_datapath = "Assets/StreamingAssets/DxRData/song_data.json" 
     tsne_specspath = "Assets/StreamingAssets/DxRSpecs/tsne_scatterplot3D.json"
     jsonpath = os.path.join(unity_tsnepath, tsne_datapath)
     specspath = os.path.join(unity_tsnepath, tsne_specspath)
 
-    process(jsonpath, specspath)
+    if (args.osc):
+        run_osc(jsonpath, specspath)
+    else:
+        process(jsonpath, specspath)
 
 if __name__ == "__main__":
     main()
