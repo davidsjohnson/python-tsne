@@ -120,13 +120,12 @@ def process(jsonpath, specspath):
     print("Done")
 
 # receive data from pad pressed to trigger tnse
-def osc_process_tsne(ogaddress, files, data):
-    if (data==1):                       #currently only for touchOSC
-        process(files[0], files[1])
+def osc_process_tsne(ogaddress, files, *args):
+    process(files[0], files[1])
 
-def osc_update_param(ogaddress, param, data):
-    print("Updating Param: {} - {}".format(param[0], int(data)))
-    tsne_params.__dict__[param[0]] = int(data)  # need to change to 1 for OSC-XR since ID is always sent first
+def osc_update_param(ogaddress, param, *args):
+    print("Updating Param: {} - {}".format(param[0], int(args[1])))
+    tsne_params.__dict__[param[0]] = int(args[1])  # need to change to 1 for OSC-XR since ID is always sent first
 
 def run_osc(jsonpath, specspath):
     from pythonosc import dispatcher
@@ -139,7 +138,7 @@ def run_osc(jsonpath, specspath):
     d.map("/tsne_lr/value", osc_update_param, "data_lr")
     d.map("/tsne_niters/value", osc_update_param, "n_iter")
 
-    server = osc_server.ThreadingOSCUDPServer(("192.168.1.36", 10101), d)
+    server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 10101), d)
     print("Serving on {}".format(server.server_address))
     server.serve_forever()
 
