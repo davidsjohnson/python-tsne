@@ -120,8 +120,9 @@ def process(jsonpath, specspath):
     print("Done")
 
 # receive data from pad pressed to trigger tnse
-def osc_process_tsne(ogaddress, files, *args):
-    process(files[0], files[1])
+def osc_process_tsne(ogaddress, params, *args):
+    process(params[0], params[1])
+    params[2].send_message("/tnseprocessed/done")
 
 def osc_update_param(ogaddress, param, *args):
     print("Updating Param: {} - {}".format(param[0], int(args[1])))
@@ -131,8 +132,12 @@ def run_osc(jsonpath, specspath):
     from pythonosc import dispatcher
     from pythonosc import osc_server
 
+    from pythonosc import udp_client
+
+    osc_client = udp_client.SimpleUDPClient("127.0.0.1", 10102)
+
     d = dispatcher.Dispatcher()
-    d.map("/tsneprocess/pressed", osc_process_tsne, jsonpath, specspath)
+    d.map("/tsneprocess/pressed", osc_process_tsne, jsonpath, specspath, osc_client)
     d.map("/tsne_data/value", osc_update_param, "data_idx")
     d.map("/tsne_p/value", osc_update_param, "p")
     d.map("/tsne_lr/value", osc_update_param, "data_lr")
