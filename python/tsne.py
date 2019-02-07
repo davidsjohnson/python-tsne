@@ -122,7 +122,7 @@ def process(jsonpath, specspath):
 # receive data from pad pressed to trigger tnse
 def osc_process_tsne(ogaddress, params, *args):
     process(params[0], params[1])
-    params[2].send_message("/tnseprocessed/done")
+    params[2].send_message("/tsnepython/done")
 
 def osc_update_param(ogaddress, param, *args):
     print("Updating Param: {} - {}".format(param[0], int(args[1])))
