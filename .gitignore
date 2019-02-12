@@ -3,3 +3,4 @@ marsyas*
 genres/
 */notebooks/.ipynb_checkpoints/
 .vscode/
+!python/logs/*.log

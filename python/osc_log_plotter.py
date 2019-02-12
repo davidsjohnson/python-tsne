@@ -80,6 +80,7 @@ def plot_logfiles():
     plt.ylabel("Fader Value")
     plt.xlabel("Time (ms)")
     plt.legend()
+    plt.tight_layout()
     plt.savefig("touchosc_slider_eval.pdf")
     plt.show()
 
@@ -111,6 +112,7 @@ def plot_logfiles():
     plt.ylabel("Test Iteration")
     plt.xlabel("Time (ms)")
     plt.legend()
+    plt.tight_layout()
     plt.savefig("touchosc_pad_eval.pdf")
     plt.show()
 
