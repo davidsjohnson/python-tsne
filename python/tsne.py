@@ -71,7 +71,8 @@ def run_tsne(X):
                          perplexity=tsne_params.p, 
                          learning_rate=tsne_params.lr, 
                          n_iter=tsne_params.n_iter, 
-                         init=tsne_params.init)
+                         init=tsne_params.init,
+                         random_state=1)
     return tsne.fit_transform(X)
 
 
@@ -125,11 +126,16 @@ def process(jsonpath, specspath):
 # receive data from pad pressed to trigger tnse
 def osc_process_tsne(ogaddress, params, *args):
     process(params[0], params[1])
-    params[2].send_message("/tsnepython/done")
+    print("Sending OSC...")
+    params[2].send_message("/tsnepython/done", 0)  # send message requires some value...receiver can just ignore
 
 def osc_update_param(ogaddress, param, *args):
     print("Updating Param: {} - {}".format(param[0], int(args[1])))
-    tsne_params.__dict__[param[0]] = int(args[1])  # need to change to 1 for OSC-XR since ID is always sent first
+    tsne_params.__dict__[param[0]] = int(args[1])
+
+def osc_update_init_param(ogaddress, param, *args):
+    print("Updating Param: {} - {}".format(param[0], "random" if int(args[1]) == 0 else "pca"))
+    tsne_params.__dict__[param[0]] = "random" if int(args[1]) == 0 else "pca" 
 
 def run_osc(jsonpath, specspath):
     from pythonosc import dispatcher
@@ -145,6 +151,8 @@ def run_osc(jsonpath, specspath):
     d.map("/tsne_p/value", osc_update_param, "p")
     d.map("/tsne_lr/value", osc_update_param, "data_lr")
     d.map("/tsne_niters/value", osc_update_param, "n_iter")
+    d.map("/tsne_init/value", osc_update_init_param, "init")
+
 
     server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 10101), d)
     print("Serving on {}".format(server.server_address))
