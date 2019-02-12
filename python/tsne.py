@@ -107,6 +107,9 @@ def process(jsonpath, specspath):
 
     print("Loading Data {} from ARFF File in {}...".format(data_names[tsne_params.data_idx], data_path))
     X, Y, fs = load_from_arff(data_names[tsne_params.data_idx], data_path)
+    print("X: {}".format(X.shape))
+    print("Y: {}".format(Y.shape))
+    print("fs: {}".format(fs.shape))
     print("Done")
     print("Running TSNE | p: {} - lr: {} - iters: {} - init: {} - data: {}".format(tsne_params.p, tsne_params.lr, tsne_params.n_iter, tsne_params.init, data_names[tsne_params.data_idx]))
     Y_tsne = run_tsne(X)
