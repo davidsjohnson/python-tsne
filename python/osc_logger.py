@@ -10,7 +10,7 @@ logger = logging.getLogger('osc')   # Cheating...
 def log_osc(ogaddress, params, *args):
     string = ""
     for i in args:
-        string = "{} {:.4},".format(string, i)
+        string = "{} {:.4},".format(string, float(i))
     logger.info("{} - {} - {} - {}".format(params[0], params[1], ogaddress, string))
 
 
@@ -30,7 +30,7 @@ def run_osc(logfile):
     d.map("/1/push", log_osc, "pad", "touchosc")
     d.map("/accxyz", log_osc, "acc", "touchosc")
 
-    server = osc_server.ThreadingOSCUDPServer(("192.168.0.14", 40404), d)
+    server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 40404), d)
     print("Serving on {}".format(server.server_address))
     server.serve_forever()
 
